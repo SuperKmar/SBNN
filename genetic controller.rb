@@ -6,21 +6,31 @@ STRATAGIES = [:flat, :random, :score_bias, :tournament]
 class EvolutionController
 
 	attr_reader :population
-	attr_accessor :pop_cap, :min_pop, :max_pop, :survival_rate
+	attr_accessor :pop_cap, :min_pop, :max_pop, :survival_rate, :depopulation_stratagy, :repopulation_stratagy
 
-	def initialize (inputs, outputs, hidden, pop_cap = 20,
-					mutation_rate = 0.01, severity = 0.1, heavy_mutation_rate = 0.1,
-					depopulation_stratagy = :random, repopulation_stratagy = :score_bias, survival_rate = 0.5)
+	def initialize (
+			inputs, 
+			outputs, 
+			hidden, 
+			pop_cap = 20,
+			mutation_rate = 0.01, 
+			severity = 0.1, 
+			heavy_mutation_rate = 0.1,					
+			depopulation_stratagy = :random, 
+			repopulation_stratagy = :score_bias, 
+			survival_rate = 0.5,
+			threads = false)
 
-
-		#TODO: these should be params you can change at any moment
-		# @max_pop = max_pop
-		# @min_pop = min_pop
 		@pop_cap = pop_cap
 
 		@depopulation_stratagy 	= depopulation_stratagy
 		@repopulation_stratagy 	= repopulation_stratagy
 		@survival_rate 			= survival_rate
+
+		@threads = threads # threads can be:
+		# false - use classic single thread approach
+		# true - use as many threads as possible (might be a bad idea)
+		# a number - use this many extra threads
 
 		@population = []
 		@pop_cap.times do 
@@ -59,7 +69,7 @@ class EvolutionController
 
 	#REPOPULATE SECTION
 	def repopulate
-		case @repopulation_stratagy			
+		parents = case @repopulation_stratagy			
 		when :flat
 			flat_repopulate()
 		when :tournament
@@ -69,34 +79,37 @@ class EvolutionController
 		when :random
 			random_repopulate()
 		end
-		# end
+		
+		breed( parents )
 	end
 
 	def flat_repopulate()
 		# @population.reject{ |pop| pop.nil? }
+		parents = []
 		@population = @population.sort_by{|pop| - pop[:score]} #best first
+		pop_count = @population.count
 		i = 0
-		while @population.count < @pop_cap
-			parent = @population[i]
-			child = {score: nil, nn: parent[:nn].clone.mutate}
-			@population << child
-			i += 1
+		while (pop_count + parents.count) < @pop_cap
+			parents << @population[i]
+			i = (i + 1) % pop_count
 		end
+		return parents
 	end
 
 	def random_repopulate()
 		scored_pop = @population.reject{ |pop| pop[:score].nil? }
-		while @population.count < @pop_cap
-			parent = scored_pop.shuffle.first
-			@population << {score: nil, nn: parent[:nn].clone.mutate}
+		parents = []
+		while (@population.count + parents.count) < @pop_cap
+			parents << scored_pop.shuffle.first
 		end	
 	end
 
 	def score_bias_repopulate()
+		parents = []
 		max_score = @population.max_by { |pop| pop[:score]}[:score]
 		min_score = @population.min_by { |pop| pop[:score]}[:score]
 		scored_pop = @population.reject{ |pop| pop[:score].nil? }
-		while @population.count < @pop_cap
+		while (@population.count + parents.count) < @pop_cap
 			parent = scored_pop.shuffle.first
 			if max_score == min_score
 				chance = 1
@@ -106,20 +119,47 @@ class EvolutionController
 			end
 
 			if rand() < chance
-				@population << {score: nil, nn: parent[:nn].clone.mutate}
+				parents << parent
 			end
 		end
+		return parents
 	end
 
 	def tournament_repopulate()
 		scored_pop = @population.reject{ |pop| pop[:score].nil? }
-		while @population.count < @pop_cap
+		parents = []
+		while (@population.count + parents.count) < @pop_cap
 			parent1, parent2 = scored_pop.shuffle.first(2)
 
 			if parent2.nil? or (parent1[:score] > parent2[:score])
-				@population << {score: nil, nn: parent1[:nn].clone.mutate}
+				parents << parent1
 			else
-				@population << {score: nil, nn: parent2[:nn].clone.mutate}
+				parents << parent2
+			end
+		end
+		return parents
+	end
+
+	def breed ( parents )
+		if @threads == false
+			@population += parents.map { |parent| {nn: parent[:nn].clone.mutate, score: nil} }
+		else
+			if @threads == true 
+				#unlimited threads (bad idea)
+				thread_results = []
+				parents.each do |parent|  
+					thread_results << Thread.new do
+				      	Thread.current["child"] = {nn: parent[:nn].clone.mutate, score: nil}
+				   	end
+				end
+
+				@population += thread_results.map do |thread| 
+					thread.join 
+					thread["child"]
+				end
+			else
+				#threads is a number, use group_by
+				
 			end
 		end
 	end
