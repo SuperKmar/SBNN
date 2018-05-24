@@ -166,21 +166,20 @@ class NeuralNetwork
 		if mutate? @heavy_mutation_rate
 			#TODO adding a node - adjust for 
 			new_id = rand(0..1000000)
-			bias = rand(-1.0..1.0)
-			hidden_nodes = HIDDEN_NODE_TYPES#[:sigmoid, :flat, :tanh, :positive]
+			bias = 0
 
-			@nodes << Node.new(new_id, hidden_nodes.shuffle.first, bias)
+			@nodes << Node.new(new_id, HIDDEN_NODE_TYPES.shuffle.first, bias)
 
 
-			id_from = @nodes.select{ |node| hidden_nodes.include? node.type }.shuffle.first(2).map { |node| node.id }
-			id_to	= @nodes.select{ |node| hidden_nodes.include? node.type }.shuffle.first(2).map { |node| node.id }
+			id_from = @nodes.reject{ |node| OUTPUT_NODE_TYPES.include? node.type }.map { |node| node.id }
+			id_to	= @nodes.reject{ |node| INPUT_NODE_TYPES.include?  node.type }.map { |node| node.id }
 
 			id_from.each do |id_f|
-				weight = mutation_offset(0, 1)
+				weight = 0
 				@synapses << {from: id_f, to: new_id, weight: weight}
 			end
 			id_to.each do |id_t|
-				weight = mutation_offset(0, 1)
+				weight = 0
 				@synapses << {from: new_id, to: id_t, weight: weight}
 			end
 		end
