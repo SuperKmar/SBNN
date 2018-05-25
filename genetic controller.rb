@@ -141,26 +141,34 @@ class EvolutionController
 	end
 
 	def breed ( parents )
-		if @threads == false
+		case @threads 
+		when false
 			@population += parents.map { |parent| {nn: parent[:nn].clone.mutate, score: nil} }
-		else
-			if @threads == true 
-				#unlimited threads (bad idea)
-				thread_results = []
-				parents.each do |parent|  
-					thread_results << Thread.new do
-				      	Thread.current["child"] = {nn: parent[:nn].clone.mutate, score: nil}
-				   	end
-				end
-
-				@population += thread_results.map do |thread| 
-					thread.join 
-					thread["child"]
-				end
-			else
-				#threads is a number, use group_by
-				
+		when true 
+			#unlimited threads (bad idea)
+			thread_results = []
+			parents.each do |parent|  
+				thread_results << Thread.new do
+			      	Thread.current["child"] = {nn: parent[:nn].clone.mutate, score: nil}
+			   	end
 			end
+
+			@population += thread_results.map do |thread| 
+				thread.join 
+				thread["child"]
+			end
+		else
+			i = 0
+			thread_results = []
+			parents.group_by{(i+=1) % @threads }.each do |k, parent_array|
+				thread_results << Thread.new do
+					Thread.current["children"] = parent_array.map { |parent| {nn: parent[:nn].clone.mutate, score:nil} }
+				end
+			end
+			@population += thread_results.map do |thread|
+				thread.join
+				thread["children"]
+			end.reduce(:+)
 		end
 	end
 
