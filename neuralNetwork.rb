@@ -66,54 +66,19 @@ class NeuralNetwork
 			@cache[id] #all input nodes are auto-cached
 		else
 			correct_nodes = @nodes.select{ |node| node.id == id}
-			if correct_nodes.count == 1 then
-				correct_node = correct_nodes.first
-			elsif correct_nodes.count == 0 then
-				#missing node? a bug in the mutation algo probably
+			if correct_nodes.count == 0 then
 				raise "missing node #{id}"
 			else
-				#id clash
 				correct_node = correct_nodes.first
 			end
 
-			#got the node - now call it's inputs for their outputs			
-			# if correct_node.action == :+ 
-			# 	input_sum = 0
-			# elsif correct_node.action == :* 
-			# 	input_sum = 1
-			# end
-
-			connecting_synapses = @synapses.select{ |synapse| synapse[:to] == id}
-			# input_vals = []
-			# connecting_synapses.each do |synapse|
-			# 	unless stack.include? synapse[:from]
-			# 		input_vals << (get_cache(synapse[:from], stack << id) * synapse[:weight])
-
-			# 		# if correct_node.action == :+
-			# 		# 	input_sum += 
-			# 		# elsif correct_node.action == :*
-			# 		# 	input_sum *= get_cache(synapse[:from], stack << id) * synapse[:weight]
-			# 		# end
-			# 	end				
-			# end
-			input_vals = connecting_synapses.reject do |synapse| 
-				# synapse[:from] == id
+			input_vals = @synapses.select{ |synapse| synapse[:to] == id}.reject do |synapse| 
 				stack.include? synapse[:from]
 			end.map do |synapse| 
 				(get_cache(synapse[:from], stack + [id] ) * synapse[:weight])
 			end
-			# if correct_node.action == :+
-			# 	input_sum = input_vals.reduce(:+)
-			# elsif correct_node.action == :*
-			# 	input_sum = input_vals.reduce(:*)
-			# end
-			# raise "bad node input: #{input_vals.inspect}" if input_vals.any? { |input| input.nil? }
 
 			input_sum = input_vals.reduce(correct_node.action)
-			# input_sum = correct_node.synapses.inject(0) { |sum, synapse| sum += get_cache(synapse[:id]) * synapse[:weight] }
-			#
-			#save results
-			# raise "bad node input: #{input_sum} from reducing #{input_vals.inspect} in node #{correct_node.inspect} (connecting_synapses: #{connecting_synapses}, cache dump: #{@cache.inspect}, stack: #{stack})" if input_sum.nil?
 
 			node_value = correct_node.value input_sum
 			set_cache(id, node_value)
@@ -123,7 +88,6 @@ class NeuralNetwork
 	end
 
 	def set_cache id, value
-		#just sets the cache value for node id
 		raise "attempting to set nil cache at id = #{id}: #{value}" if value.nil?
 		@cache[id] = value
 	end
@@ -134,18 +98,14 @@ class NeuralNetwork
 
 	#GA functions. things like fitness should be in the GA/NN controller and exist outside the NN itself
 	def clone		
-		# def initialize id = nil,
-		 # nodes = nil, 
-		 # synapses = nil, 
-		 # mutation_rate = 0.01, 
-		 # severity = 0.1, 
-		 # heavy_mutation_rate = 0.1
-		new_nn = NeuralNetwork.new(self.id, 
+		NeuralNetwork.new(
+			self.id, 
 			self.nodes, 
 			self.synapses, 
 			self.mutation_rate, 
 			self.severity, 
-			self.heavy_mutation_rate)
+			self.heavy_mutation_rate
+			)
 	end
 
 	def mutate		

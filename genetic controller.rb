@@ -299,16 +299,7 @@ class EvolutionController
 		gnodes = {}
 
 		nn.nodes.each do |node|
-			# color = case node.type 
-			# when :input 
-			# 	"0.0 1.0 0.0" 
-			# when :output
-			# 	"0.0 0.0 1.0" 
-			# else
-			# 	#everything else
-			# 	"1.0 1.0 0.0" 
-			# end
-			label = "#{node.id}: #{node.type} #{node.action}" #: #{node.action} #{node.bias}
+			label = "#{node.id}: #{node.type} #{node.action}"
 			shape = nil
 			if node.type == :input
 				shape = :invhouse
@@ -325,10 +316,6 @@ class EvolutionController
 		end
 
 		nn.synapses.each do |synapse|
-			# g.add_edges( synapse[:from], synapse[:to], :weight => synapse[:weight].abs, )
-			# puts "adding edges: #{synapse[:from]} - #{synapse[:to]}" 
-			# puts "(#{gnodes[synapse[:from]].inspect} - #{gnodes[synapse[:to]].inspect } )"
-			# puts
 			g.add_edges( 
 				gnodes[synapse[:from]], 
 				gnodes[synapse[:to]], 
@@ -338,23 +325,9 @@ class EvolutionController
 
 		g.output( :pdf => "#{filename}.pdf" )
 		g.output( :jpg => "#{filename}.jpg" )
-		# graph = RGL::ImplicitGraph.new do |g|
-		#     # g.vertex_iterator { |b| 2.upto(n, &b) }
-		#     g.vertex_iterator { |procparam| nn.nodes.map(&:id).each( &procparam ) }
-		#     g.adjacent_iterator do |graph_node, procparam|
-		#       	# n.downto(x + 1) { |y| b.call(y) if y % x == 0 }
-		#     	synapses = nn.synapses.select{ |s| s[:from] == graph_node }
-		#     	synapses.each do |synapse|
-		#     		other_node = nn.nodes.select do |node| 
-		#     			node.id == synapse[:to] and 
-		#     			synapse[:from] == graph_node
-		#     		end.first #there is always only 1 valid synapse
+	end
 
-		#       		procparam.call(other_node.id)
-		#   		end
-		#     end
-		#     g.directed = true
-		# end
-		# graph.write_to_graphic_file(filename)
+	def save_charts filename
+		#TODO: save the evolution history to spreadsheet. Should require the 'roo' gem
 	end
 end

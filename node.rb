@@ -1,18 +1,14 @@
-# HIDDEN_NODE_TYPES = [:sigmoid, :flat, :tanh, :positive, :none] #, :delay, :average] #TODO: disabled stacked param node types
-
 HIDDEN_NODE_TYPES = [
 	:sigmoid, 
 	:threshold,
 	:tanh, 
-	# :sinh,
 	:none,
 	:rectified_liniar_unit,
 	:leaky_rectified_liniar_unit,
-	# :softplus,
 	:radial_basis
 ]
 
-INPUT_NODE_TYPES  = [:input] #, :fuzzy_input, :flat_random_input] #TODO - add genetic controller options to enable fuzzy inputs
+INPUT_NODE_TYPES  = [:input]
 OUTPUT_NODE_TYPES = [:output]
 
 class Node
@@ -45,34 +41,20 @@ class Node
 		case @type
 
 		#perceptron types
-		when :sigmoid #params show how rough the curve is
+		when :sigmoid
 			sigmoid(x)
-		when :threshold #no params are used. Bias allows to move the merge point left and right
+		when :threshold
 			threshold(x)
-		when :tanh #same as sigmoid
+		when :tanh
 			tanh(x)
-		when :sinh #same as sigmoid
-			sinh(x)
-		when :none #take no action
+		when :none
 			none(x)
 		when :rectified_liniar_unit
 			rectified_liniar_unit(x)
 		when :leaky_rectified_liniar_unit
 			leaky_rectified_liniar_unit(x)
-		when :softplus
-			softplus(x)
 		when :radial_basis
 			radial_basis(x)
-
-		# #memory / delay circuts
-		# when :delay #params show how deep the rabbit hole goes
-		# 	a = @params[:a]
-		# 	a.push(x).shift(1)
-		# when :average #params show how deep the rabbit hole goes
-		# 	a = @params[:a]
-		# 	a.push(x).shift(1)
-
-		# 	a.reduce(:+) / a.size
 
 		#I/O
 		when :input #no params
@@ -110,10 +92,6 @@ class Node
 		x > 0 ? x : (x / 5.0)
 	end
 
-	# def softplus(x)
-	# 	Math.log(x)
-	# end
-
 	def none(x)
 		x
 	end
@@ -121,8 +99,6 @@ class Node
 	def radial_basis(x)
 		Math::E ** ( - (x**2) )		
 	end
-
-
 
 
 
@@ -137,15 +113,13 @@ class Node
 
 		#mutate what the node does with the synapses
 		if mutate? (heavy_mutation_cap)
-			if mutate? ( rate )
-				action_type = rand(2)
-				case action_type
-				when 0
-					@action = :+
-				when 1
-					@action = :*
-				end				
-			end
+			action_type = rand(2)
+			case action_type
+			when 0
+				@action = :+
+			when 1
+				@action = :*
+			end				
 		end
 
 		@bias = mutation_offset(@bias, severity) if mutate?(rate)
@@ -164,7 +138,6 @@ class Node
 	def mutation_offset x, severity
 		min = (x-severity)
 		max = (x+severity)
-		# rand ( (x-severity)..(x+severity)  )
 		rand() * (max - min) + min
 	end
 
