@@ -6,7 +6,13 @@ STRATAGIES = [:flat, :random, :score_bias, :tournament]
 class EvolutionController
 
 	attr_reader :population
-	attr_accessor :pop_cap, :min_pop, :max_pop, :survival_rate, :depopulation_stratagy, :repopulation_stratagy
+	attr_accessor :pop_cap, 
+		:min_pop, 
+		:max_pop, 
+		:survival_rate, 
+		:depopulation_stratagy, 
+		:repopulation_stratagy,
+		:record_evolution
 
 	def initialize (
 			inputs, 
@@ -19,7 +25,8 @@ class EvolutionController
 			depopulation_stratagy = :random, 
 			repopulation_stratagy = :score_bias, 
 			survival_rate = 0.5,
-			threads = false)
+			threads = false,
+			record_evolution = false)
 
 		@pop_cap = pop_cap
 
@@ -31,6 +38,7 @@ class EvolutionController
 		# false - use classic single thread approach
 		# true - use as many threads as possible (might be a bad idea)
 		# a number - use this many extra threads
+		@record_evolution = record_evolution
 
 		@population = []
 		@pop_cap.times do 
@@ -271,9 +279,15 @@ class EvolutionController
 	end
 
 	def evolve
+		record_evolution() if @record_evolution
 		depopulate() 
 		repopulate()
 	end	
+
+	def record_evolution
+		@evolution_record = [] if @evolution_record.nil?
+		@evolution_record << @population.map{|pop| pop[:score]}.sort.reverse
+	end
 
 	########################################
 	############getting results#############
@@ -328,6 +342,12 @@ class EvolutionController
 	end
 
 	def save_charts filename
-		#TODO: save the evolution history to spreadsheet. Should require the 'roo' gem
+		#offload happens in .csv to avoid adding gems
+		File.open(filename, 'w') do |file| 
+			file.puts("generation;#{(1..@population.count).to_a.join(";")};" ) 
+			@evolution_record.each.with_index(1) do |record_line, line_number|
+				file.puts("#{line_number};#{record_line.join(";")};")
+			end			
+		end
 	end
 end
