@@ -1,11 +1,44 @@
 require_relative "node"
 
-#NeuralNetwork.rb
+#NeuralNetwork class encapsulates all methods needed to run a feed foreward neural network, including input-out mechanics, cloning and mutation
+#
+# == Readers:
+#
+# id, mutation_rate, severity, heavy_mutation_rate
+#
+# == Accessors:
+#
+# nodes, synapses
+#
+# == Functions:
+# 
+# initialize
+# set_inputs
+# get_outputs
+# get_cache
+# set_cache
+# clear_cache
+# mutate
+# mutate?
+# mutation_offset
 class NeuralNetwork
 	
 	attr_accessor :nodes, :synapses
 	attr_reader :id, :mutation_rate, :severity, :heavy_mutation_rate
 
+	#Creates a new neural network
+	# === Attributes
+	# *+id+ - id for tracking the neural network. Uses a random number if nil/ommited
+	# *+nodes+ - array of nodes (see Node class)
+	# *+synapses+ - array of synapses
+	# *+mutation_rate+ - base chance for adjusting values when calling the mutate function, this value mutates as well
+	# *+severity+ - amount of adjustment to be done when mutating, this value mutates as well
+	# *+heavy_mutation_rate - base chance for adding and deleting nodes and synapses at random
+	# === Synapses
+	# a synapse is represented as a hash with the following keys:
+	# *+from+ - node id from which a value is extracted to be used as input
+	# *+to+ - node id for which etracted value is used as input
+	# *+weight+ - value multiplier for adjusting importance of a given input, value is any float value
 	def initialize id = nil, nodes = nil, synapses = nil, mutation_rate = 0.01, severity = 0.1, heavy_mutation_rate = 0.1
 		if id.nil? 
 			@id = rand(0..1000000)
@@ -40,6 +73,12 @@ class NeuralNetwork
 	end
 
 	#network-wide node operations
+
+	#Sets neural network input. Must be called before attempting to retreve an output
+	#
+	# === Paramaters
+	# 
+	# *+inputs+ - an array of floats representing the starting values of the input nodes. Array length must be identical to neural network input node count. Input node ID corresponds to array element index, which is why input nodes must have continuous ID's starting from 0.
 	def set_inputs inputs = []
 		#sets the input node values to the ones in the method paramater, one by one depending on the order they are returned from the select function
 		#the order is sorted by id to keep consistancy
@@ -50,6 +89,7 @@ class NeuralNetwork
 		end
 	end
 
+	#Returns an array of node outputs. Checks only for nodes with the :output type
 	def get_outputs
 		#returns an array of the end values of all the output nodes. sorted by id for consistancy
 		output_nodes = @nodes.select { |node| node.type == :output } #there might be more output types later on though
@@ -59,6 +99,13 @@ class NeuralNetwork
 	end
 
 	#cache speed ups 
+
+	#Returns the cached value of the specified node. If no cache value exists, it will be looked up and saved
+	#
+	# === Paramaters
+	#
+	# *+id+ - the ID of the node
+	# *+stack+ - an array of ID's of nodes that should not be checked in case a value must be calculated (used to ignore loops and infinite recursion)
 	def get_cache id, stack = []
 		#gets the node value, sets it if was not found in the cache
 
@@ -87,16 +134,25 @@ class NeuralNetwork
 		end
 	end
 
+	#Saves the output value of a node
+	#
+	# === Paramaters
+	# 
+	# *+id+ - the node ID that will be cached. Overwrites existing caches
+	# *+value+ - the value that is being saved
 	def set_cache id, value
 		raise "attempting to set nil cache at id = #{id}: #{value}" if value.nil?
 		@cache[id] = value
 	end
 
+	#Clears the current cache
 	def clear_cache
 		@cache.clear
 	end
 
 	#GA functions. things like fitness should be in the GA/NN controller and exist outside the NN itself
+
+	#Creates a new neural network based on self. ID is preserved
 	def clone		
 		NeuralNetwork.new(
 			self.id, 
@@ -108,6 +164,8 @@ class NeuralNetwork
 			)
 	end
 
+	#Mutates self based on mutation rate, severity and heavy mutation rate.
+	# mutations include adjusting synapse weights, adding and destroying nodes, as well as calling node.mutate on all nodes
 	def mutate		
 		#first mutate global NN values
 		#then add or delete nodes if the sevetiry is high enough
@@ -146,7 +204,6 @@ class NeuralNetwork
 
 		#delete a random node (this would work better with lower influence nodes)
 		if mutate? @heavy_mutation_rate
-			#TODO deleting a node
 			hidden_nodes = HIDDEN_NODE_TYPES
 			node_for_deletion = @nodes.select{ |node| hidden_nodes.include? node.type}.shuffle.first
 			unless node_for_deletion.nil?
@@ -172,19 +229,25 @@ class NeuralNetwork
 			chosen_synapse = @synapses.shuffle.first
 			@synapses.reject! { |synapse| synapse == chosen_synapse }
 		end
-		# end	
-		# end	
-
-		#MUTATE NODES
-			# def mutate! rate, severity, heavy_mutation_cap
 		@nodes.map! { |node| node.mutate!(@mutation_rate, @severity, @heavy_mutation_rate) }
 		return self
 	end
 
+	#Checks if a mutation should occour
+	#
+	# === Paramaters
+	# 
+	# *+rate+ - the mutation chance between 0.0 and 1.0
 	def mutate? rate
 		rand() < rate
 	end
 
+	#creates a new value near the initial value and mutation severity
+	#
+	# === Paramaters
+	#
+	# *+x+ - the base value. New value will be close to this paramater
+	# *+severity+ - the max deviation from the oridinal value.
 	def mutation_offset x, severity
 		min = (x-severity)
 		max = (x+severity)
