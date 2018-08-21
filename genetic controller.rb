@@ -1,10 +1,29 @@
 #genetic controller
 require_relative "neuralNetwork"
 
+# CONSTANTS
+# STRATAGIES - an array of depopulation and repopulation stratagies. Used for comparison and for the user to choose from
+# :flat - will kill the N% worst or use the N% best for cloning
+# :random - unbiased killing of N random solutions, selection of N random parents for cloning
+# :score_bias - lower score increases chance of being deleted, higher score increases chance of being cloned
+# :tournament - selects two random solutions. Worst score is killed if used for depopulation, best score is cloned if used for repopulation
 STRATAGIES = [:flat, :random, :score_bias, :tournament]
 
+#EvolutionController class provides the interface for setting up a population, scoring and untilizing genetic algorithms for improving the results
+# == READERS:
+# population - an array of hashes, where the hash has a neural network class object and a score
+#
+# == ACCESSORS:
+# pop_cap - current population cap for genetic algorithm
+# min_pop - minimum population cap for genetic algorithm (values under 20 not reccomended)
+# max_pop - maximum population cap for genetic algorithm
+# survival_rate - amount of population that gets killed each cycle.
+# depopulation_stratagy - the method used to kill off population. Must be an element of the STRATAGIES constant: [:flat, :random, :score_bias, :tournament]
+# repopulation_stratagy - the method used select population members for cloning. Must be an element of the STRATAGIES constant: [:flat, :random, :score_bias, :tournament]
+# record_evolution - if true, will record evolution history such as population counts, fitness scores and generations. Outputs to a single table.
 class EvolutionController
 
+	#EvolutionController readable and modable values:
 	attr_reader :population
 	attr_accessor :pop_cap, 
 		:min_pop, 
@@ -14,6 +33,20 @@ class EvolutionController
 		:repopulation_stratagy,
 		:record_evolution
 
+	#Creates a new controller
+	# === Attributes
+	# * +inputs+ - int; Amount of input nodes in the neural network
+	# * +outputs+ - int; Amount of output nodes in the neural network
+	# * +hidden+ - int; Amount of hidden nodes in the initial neural network. This amount can change. Initial NN is fully connected
+	# * +pop_cap+ = 20; Initial population cap. This value can be changed each generation if needed.
+	# * +mutation_rate+ = 0.01; Initial mutation rate for a neural network. This value can mutate as well and is likely to drop to very low values
+	# * +severity+ = 0.1; How drastic the mutation is. This value can mutate as well and is likely to drop.
+	# * +heavy_mutation_rate+ = 0.1; The rate at which nodes and synapses can be added / deleted. This value can mutate and is likely to drop to very low values.
+	# * +depopulation_stratagy+ = :random; The method by which population members are destroyed.
+	# * +repopulation_stratagy+ = :score_bias; The method by which parents are selected from the population for cloning and mutation
+	# * +survival_rate+ = 0.5; Amount of population (%) subject to depopulation when creating next generation
+	# * +threads+ = false; Use multithreadding or not. True means each NN will get it's own thread. An integer will use that many threads (i.e. threads = 3 means only 3 extra threads will be used). False uses single threaded mutations
+	# * +record_evolution+ = false; Record the evolution proccess (generations, scores, populations). Can be turned off and on if only several points are needed.
 	def initialize (
 			inputs, 
 			outputs, 
@@ -76,6 +109,8 @@ class EvolutionController
 	end
 
 	#REPOPULATE SECTION
+	
+	#Repopulates up to @pop_cap.	
 	def repopulate
 		parents = case @repopulation_stratagy			
 		when :flat
@@ -91,6 +126,7 @@ class EvolutionController
 		breed( parents )
 	end
 
+	#Selects the best population members rated by their score. Returns the selected parents
 	def flat_repopulate()
 		# @population.reject{ |pop| pop.nil? }
 		parents = []
@@ -104,6 +140,7 @@ class EvolutionController
 		return parents
 	end
 
+	#Selects random population members. Returns the selected parents
 	def random_repopulate()
 		scored_pop = @population.reject{ |pop| pop[:score].nil? }
 		parents = []
@@ -112,6 +149,7 @@ class EvolutionController
 		end	
 	end
 
+	#Selects parents based on their score. Higher score gives a higher chance to be selected. Returns the selected parents
 	def score_bias_repopulate()
 		parents = []
 		max_score = @population.max_by { |pop| pop[:score]}[:score]
@@ -133,6 +171,7 @@ class EvolutionController
 		return parents
 	end
 
+	#Selects the best of 2 random population members based on their score. Returns the selected parents
 	def tournament_repopulate()
 		scored_pop = @population.reject{ |pop| pop[:score].nil? }
 		parents = []
@@ -148,6 +187,9 @@ class EvolutionController
 		return parents
 	end
 
+	#Clones the parents and adds them to the population. This is the only multithreaded part.
+	# === Paramaters
+	# * +parents+ - an array of parents to be clones and mutated.
 	def breed ( parents )
 		case @threads 
 		when false
@@ -181,6 +223,8 @@ class EvolutionController
 	end
 
 	#DEPOPULATE SECTION
+	
+	#Kills off N% of the population, based on the survivability paramater
 	def depopulate
 		case @depopulation_stratagy
 		when :flat
@@ -194,11 +238,13 @@ class EvolutionController
 		end			
 	end
 
+	#Kills off the worst N% based on score
 	def flat_depopulate()
 		#take the worst N% and kill them
 		@population = @population.sort_by{ |pop| - pop[:score] }.first((@population.count * @survival_rate).round)
 	end
 
+	#Kills off the worst out of 2 members N% times
 	def tournament_depopulate()
 		to_keep = ( @population.count * (@survival_rate)).floor
 		scored_pop = @population.reject { |pop| pop[:score].nil? }
@@ -208,6 +254,7 @@ class EvolutionController
 		end
 	end
 
+	#Kills off N% random members
 	def random_depopulate()
 		#kill random examples until N% are dead
 		#@population.reject!{ |pop| rand() > @survival_rate }
@@ -215,6 +262,7 @@ class EvolutionController
 		@population = @population.shuffle.first( to_keep )
 	end
 
+	#Kills off members based on their score. Lower score increases the chance to be selected for elimination
 	def score_bias_depopulate()
 		#use reverse score bias: worst score = 100% death rate, best score = 0% death rate
 		starting_count = @population.count
@@ -238,28 +286,13 @@ class EvolutionController
 		end
 	end
 
-	#########################################
-	#TODO: this should be an optional part of the controller, possibly taken outside
-	#the 1.1 and 0.9 mods should be paramaters
-	def adapt_population_size
-		max_score = @population.max_by{ |pop| pop[:score]}[:score]
-		if @best_score.nil?
-			@best_score = max_score
-		else
-			if @best_score >= max_score
-				#stagnation
-				@pop_cap = [@pop_cap * 1.1, @max_pop].min
-				return max_score
-			else
-				#progress
-				@pop_cap = [@pop_cap * 0.9, @min_pop].max
-				@best_score = max_score
-			end
-		end
-	end
-
 	#############during training###########
 	#######################################
+	
+	#Runs the neural network with the provided inputs
+	# === Paramaters
+	# * +nn+ - the neural network. This is the :nn part of the population member hash ( :score is ommited )
+	# * +inputs+ - an array of floats or integers. The order if the inputs shouldn't change as array index is tied to input node id's
 	def test nn, inputs
 		nn.set_inputs inputs
 		result = nn.get_outputs
@@ -267,6 +300,10 @@ class EvolutionController
 		return result
 	end
 
+	#Sets the score for selected neural network
+	# === Paramaters
+	# * +nn+ - the neural network (:nn) part of a population member ( :score is ommited )
+	# * +score+ - the score to be set for the neural network
 	def set_score nn, score
 		selected_pops = @population.select { |pop| pop[:nn] == nn }
 		selected_pops.each { |pop| pop[:score] = score }
@@ -278,12 +315,14 @@ class EvolutionController
 		end		
 	end
 
+	#Depopulates and repopulated the neural networks. Scores should be set beforhand unless using :random depop and repop stratagies. If recording is set then the recording happens at this point
 	def evolve
 		record_evolution() if @record_evolution
 		depopulate() 
 		repopulate()
 	end	
-
+	
+	#Records the populations, their scores and generations
 	def record_evolution
 		@evolution_record = [] if @evolution_record.nil?
 		@evolution_record << @population.map{|pop| pop[:score]}.sort.reverse
@@ -291,6 +330,10 @@ class EvolutionController
 
 	########################################
 	############getting results#############
+	
+	#Dumps a YAML representation of the :nn portion of the population members. The YAML is returned to be saved manually where needed
+	# === Paramaters
+	# * +best+ = true; If true, only the best neural network will be offloaded. Otherwise the population is sorted by score and offloaded in an array of neural networks
 	def offload best = true
 		if best
 			pop = @population.max_by{ |pop| pop[:score]}
@@ -304,6 +347,10 @@ class EvolutionController
 		end
 	end
 
+	#Saves a visual representation of a neural network to a graph. Offloads a PDF and a JPG format. Large graphs (50+ nodes) cantake about 15 minutes to save to JPG. Use of this function requires the GraphViz gem to be installed
+	# === Paramaters
+	# * +nn+ - the neural network to be saved
+	# * +filename+ - the path to save the file
 	def save_graph nn, filename
 		#this requires GraphViz to be installed, so "meh" at best?
 		
@@ -341,6 +388,9 @@ class EvolutionController
 		g.output( :jpg => "#{filename}.jpg" )
 	end
 
+	#If recording evolution was enabled, this function will offload the statistics to a csv file
+	# === Paramaters
+	# * +filename+ - the filename to offload the csv file to
 	def save_charts filename
 		#offload happens in .csv to avoid adding gems
 		File.open(filename, 'w') do |file| 
