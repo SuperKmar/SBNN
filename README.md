@@ -20,14 +20,15 @@ controller = EvolutionController.new(
     false, #use multithreadding ('true' for max threads, int to set amount of extra threads when cloning population)
     false) #record statistics of evolution
     
-#"controller" now has 100 similar fully connected neural networks and the methods to test them and score them
+# "controller" now has 100 similar fully connected neural networks and the methods to test them and score them
 
 #testing every neural network on our test data:
 test_input_array = [0.1, 0.5, 0.9] 
-#test data in the array is sorted. 
-#Input nodes have incremental id's starting from 0 and are assigned the corresponding array element. 
-#This example uses only one test input, but you can score neural networks across multiple test cases 
-#and rate their significance as you wish
+
+# test data in the array is sorted. 
+# Input nodes have incremental id's starting from 0 and are assigned the corresponding array element. 
+# This example uses only one test input, but you can score neural networks across multiple test cases 
+# and rate their significance as you wish
 
 controller.population.each do |pop|
   nn = pop[:nn]
@@ -44,15 +45,16 @@ controller.population.each do |pop|
   controller.set_score( nn, base_score + size_penalty)
 end
 
-#after scores have been set launch an evolution cycle
+# after scores have been set launch an evolution cycle
+
 controller.evolve
 
+# after multiple traning cycles and evolution cycles you may stop when the accuracy of responce is within acceptable borders
+# get the best neural network:
 
-#after multiple traning cycles and evolution cycles you may stop when the accuracy of responce is within acceptable borders
-#get the best neural network:
 nn = controller.population.reject{ |pop| pop[:score].nil? }.max_by{ |pop| pop[:score]}[:nn]
 
-#displaying the best neural network based on an array of test inputs (which are also arrays)
+# displaying the best neural network based on an array of test inputs (which are also arrays)
 
 control_inputs.each_index do |i|
     outputs = controller.test(nn, control_inputs[i] )
@@ -65,8 +67,10 @@ control_inputs.each_index do |i|
     puts
 end
 
-#saving the best neural network to a graph:
+# saving the best neural network to a graph:
+
 controller.save_graph(nn, "best nn #{nn.id}" )
 
-#saving evolution statistics
+# saving evolution statistics
+
 controller.save_charts("my_evolution_statistics.csv")
