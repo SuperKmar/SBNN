@@ -1,7 +1,7 @@
 # SBNN
 general self building neural network in ruby
 
-To create a neural network controller:
+# To create a neural network controller:
 require "genetic controller"
 controller = EvolutionController.new(
     3, #Amont of input nodes
@@ -22,13 +22,10 @@ controller = EvolutionController.new(
     
 # "controller" now has 100 similar fully connected neural networks and the methods to test them and score them
 
-#testing every neural network on our test data:
+# testing every neural network on our test data:
 test_input_array = [0.1, 0.5, 0.9] 
 
-# test data in the array is sorted. 
-# Input nodes have incremental id's starting from 0 and are assigned the corresponding array element. 
-# This example uses only one test input, but you can score neural networks across multiple test cases 
-# and rate their significance as you wish
+# test data in the array is sorted.Input nodes have incremental id's starting from 0 and are assigned the corresponding array element. This example uses only one test input, but you can score neural networks across multiple test cases and rate their significance as you wish
 
 controller.population.each do |pop|
   nn = pop[:nn]
@@ -49,8 +46,7 @@ end
 
 controller.evolve
 
-# after multiple traning cycles and evolution cycles you may stop when the accuracy of responce is within acceptable borders
-# get the best neural network:
+# after multiple traning cycles and evolution cycles you may stop when the accuracy of responce is within acceptable borders get the best neural network:
 
 nn = controller.population.reject{ |pop| pop[:score].nil? }.max_by{ |pop| pop[:score]}[:nn]
 
